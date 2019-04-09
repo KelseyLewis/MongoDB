@@ -31,7 +31,46 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+//EVERYTHING AFTER THIS HAS TO GO THROUGH AUTHORIZATION BEFORE MIDDLEWARE
+//CAN BE ACCESSED
+
+function auth(req, res, next) {
+  console.log(req.headers);
+
+  var authHeader = req.headers.authorization;
+
+  //if there's no authorization info in the header, request it from the client
+  if (!authHeader) {
+    var err = new Error('You are not authenticated');
+    res.setHeader('WWW-Authenticate', 'Basic');
+    err.status = 401;
+    return next(err);
+  }
+
+  //Header comes in as 'Basic' + ' ' + 'username:password
+  //split at ' ' and ':' to get an auth array with 2 items
+  //the username [0] and password [1]
+  var auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');
+  var username = auth[0];
+  var password = auth[1];
+
+  if (username === 'admin' && password === 'password') {
+    next();
+  } else { //username and password didn't match, request authentication again
+    var err = new Error('You are not authenticated');
+
+    res.setHeader('WWW-Authenticate', 'Basic');
+    err.status = 401;
+    return next(err);
+  }
+}
+
+app.use(auth);
+
+//enables us to serve static data from public folder
 app.use(express.static(path.join(__dirname, 'public')));
+
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
