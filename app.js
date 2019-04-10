@@ -12,8 +12,6 @@ var leaderRouter = require('./routes/leaderRouter');
 
 const mongoose = require('mongoose');
 
-const Dishes = require('./models/dishes');
-
 const url = 'mongodb://localhost:27017/conFusion';
 const connect = mongoose.connect(url);
 
@@ -30,39 +28,49 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(cookieParser('12345-67890-09876-54321'));
 
 //EVERYTHING AFTER THIS HAS TO GO THROUGH AUTHORIZATION BEFORE MIDDLEWARE
 //CAN BE ACCESSED
-
 function auth(req, res, next) {
-  console.log(req.headers);
+  console.log(req.signedCookies);
 
-  var authHeader = req.headers.authorization;
+  //if the incoming request does not include a user in the signed cookies
+  //the user has not been authenticated yet. So prompt user for authorization
+  if (!req.signedCookies.user) {
+    var authHeader = req.headers.authorization;
 
-  //if there's no authorization info in the header, request it from the client
-  if (!authHeader) {
-    var err = new Error('You are not authenticated');
-    res.setHeader('WWW-Authenticate', 'Basic');
-    err.status = 401;
-    return next(err);
-  }
+    //if there's no authorization info in the header, request it from the client
+    if (!authHeader) {
+      var err = new Error('You are not authenticated');
+      res.setHeader('WWW-Authenticate', 'Basic');
+      err.status = 401;
+      return next(err);
+    }
 
-  //Header comes in as 'Basic' + ' ' + 'username:password
-  //split at ' ' and ':' to get an auth array with 2 items
-  //the username [0] and password [1]
-  var auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');
-  var username = auth[0];
-  var password = auth[1];
-
-  if (username === 'admin' && password === 'password') {
-    next();
-  } else { //username and password didn't match, request authentication again
-    var err = new Error('You are not authenticated');
-
-    res.setHeader('WWW-Authenticate', 'Basic');
-    err.status = 401;
-    return next(err);
+    //Header comes in as 'Basic' + ' ' + 'username:password
+    //split at ' ' and ':' to get an auth array with 2 items
+    //the username [0] and password [1]
+    var auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
+    var user = auth[0];
+    var password = auth[1];
+    if (user == 'admin' && password == 'password') {
+      res.cookie('user','admin',{signed: true});
+      next(); // authorized
+    } else {
+      var err = new Error('You are not authenticated!');
+      res.setHeader('WWW-Authenticate', 'Basic');              
+      err.status = 401;
+      next(err);
+    }
+  } else {
+    if (req.signedCookies.user === 'admin') {
+      next();
+    } else {
+      var err = new Error('You are not authenticated!');
+      err.status = 401;
+      next(err);
+    }
   }
 }
 
