@@ -7,7 +7,7 @@ var session = require('express-session');
 var FileStore = require('session-file-store')(session);
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+var userRouter = require('./routes/userRouter');
 var dishRouter = require('./routes/dishRouter');
 var promoRouter = require('./routes/promoRouter');
 var leaderRouter = require('./routes/leaderRouter');
@@ -41,6 +41,9 @@ app.use(session({
   store: new FileStore()
 }));
 
+app.use('/', indexRouter);
+app.use('/users', userRouter);
+
 //EVERYTHING AFTER THIS HAS TO GO THROUGH AUTHORIZATION BEFORE MIDDLEWARE
 //CAN BE ACCESSED
 function auth(req, res, next) {
@@ -49,50 +52,26 @@ function auth(req, res, next) {
   //if the incoming request does not include a user in the signed cookies
   //the user has not been authenticated yet. So prompt user for authorization
   if (!req.session.user) {
-    var authHeader = req.headers.authorization;
-
-    //if there's no authorization info in the header, request it from the client
-    if (!authHeader) {
-      var err = new Error('You are not authenticated');
-      res.setHeader('WWW-Authenticate', 'Basic');
-      err.status = 401;
-      return next(err);
-    }
-
-    //Header comes in as 'Basic' + ' ' + 'username:password
-    //split at ' ' and ':' to get an auth array with 2 items
-    //the username [0] and password [1]
-    var auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
-    var user = auth[0];
-    var password = auth[1];
-    if (user == 'admin' && password == 'password') {
-      req.session.user = 'admin';
-      next(); // authorized
-    } else {
-      var err = new Error('You are not authenticated!');
-      res.setHeader('WWW-Authenticate', 'Basic');              
-      err.status = 401;
-      next(err);
-    }
-  } else {
-    if (req.session.user === 'admin') {
+    var err = new Error('You are not authenticated');
+    err.status = 401;
+    return next(err);
+  }
+  else {
+    if (req.session.user === 'authenticated') {
       next();
     } else {
       var err = new Error('You are not authenticated!');
-      err.status = 401;
+      err.status = 403; //forbidden
       next(err);
     }
   }
-}
+};
 
 app.use(auth);
 
 //enables us to serve static data from public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
 app.use('/dishes', dishRouter);
 app.use('/promotions', promoRouter);
 app.use('/leaders', leaderRouter);
