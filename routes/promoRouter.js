@@ -17,7 +17,7 @@ promoRouter.route('/')
       .catch((err) => next(err));
 })
   //posting a new promotion to the server
-.post(authenticate.verifyUser, (req, res, next) => {
+.post(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     Promos.create(req.body)
     .then((promos) => {
       console.log(`Promotion ${promos} created`);
@@ -28,11 +28,11 @@ promoRouter.route('/')
     .catch((err) => next(err)); 
 })  
   //doesn't make sense to put in this case, we're already posting with post
-.put(authenticate.verifyUser, (req, res, next) => {
+.put(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     res.statusCode = 403;
     res.end('PUT operation not supported on /promos');
 })
-.delete(authenticate.verifyUser, (req, res, next) => {
+.delete(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     Promos.remove({})
     .then((resp) => {
       res.statusCode = 200;
@@ -53,11 +53,11 @@ promoRouter.route('/:promoId')
   }, (err) => next(err))
   .catch((err) => next(err)); 
 })
-.post(authenticate.verifyUser, (req, res, next) => {
+.post(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     res.statusCode = 403;
     res.end('POST operation not supported on /promos/'+ req.params.promoId);
 })
-.put(authenticate.verifyUser, (req, res, next) => {
+.put(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
   Promos.findByIdAndUpdate(req.params.promoId, {
     $set: req.body
   }, { new: true })
@@ -68,7 +68,7 @@ promoRouter.route('/:promoId')
   }, (err) => next(err))
   .catch((err) => next(err)); 
 })
-.delete(authenticate.verifyUser, (req, res, next) => {
+.delete(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
   Promos.findByIdAndRemove(req.params.promoId)
   .then((resp) => {
     res.statusCode = 200;

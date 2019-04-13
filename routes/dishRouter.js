@@ -19,7 +19,7 @@ dishRouter.route('/')
     .catch((err) => next(err));
 })
   //posting a new dish to the server
-.post(authenticate.verifyUser, (req, res, next) => {
+.post(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     Dishes.create(req.body)
     .then((dishes) => {
       console.log(`Dish ${dishes} created`);
@@ -30,11 +30,11 @@ dishRouter.route('/')
     .catch((err) => next(err)); 
 })  
   //doesn't make sense to put in this case, we're already posting with post
-.put(authenticate.verifyUser, (req, res, next) => {
+.put(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     res.statusCode = 403;
     res.end('PUT operation not supported on /dishes');
 })
-.delete(authenticate.verifyUser, (req, res, next) => {
+.delete(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     Dishes.remove({})
     .then((resp) => {
       res.statusCode = 200;
@@ -56,11 +56,11 @@ dishRouter.route('/:dishId')
     }, (err) => next(err))
     .catch((err) => next(err));
 })
-.post(authenticate.verifyUser, (req, res, next) => {
+.post(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     res.statusCode = 403;
     res.end('POST operation not supported on /dishes/'+ req.params.dishId);
 })
-.put(authenticate.verifyUser, (req, res, next) => {
+.put(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
   Dishes.findByIdAndUpdate(req.params.dishId, {
     $set: req.body
   }, { new: true })
@@ -71,7 +71,7 @@ dishRouter.route('/:dishId')
   }, (err) => next(err))
   .catch((err) => next(err)); 
 })
-.delete(authenticate.verifyUser, (req, res, next) => {
+.delete(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
   Dishes.findByIdAndRemove(req.params.dishId)
   .then((resp) => {
     res.statusCode = 200;
@@ -126,7 +126,7 @@ dishRouter.route('/:dishId/comments')
     res.statusCode = 403;
     res.end('PUT operation not supported on /dishes/' + req.params.dishId + '/comments');
 })
-.delete(authenticate.verifyUser, (req, res, next) => {
+.delete(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     Dishes.findById(req.params.dishId)
     .then((dish) => {
       if (dish!=null) {
@@ -181,6 +181,11 @@ dishRouter.route('/:dishId/comments/:commentId')
   .then((dish) => {
     //dish exists and comments exist for the dish
     if (dish != null && dish.comments.id(req.params.commentId) != null) {
+      if (dish.comments.id(req.params.commentId).author.toString() != req.user._id.toString()) {
+        err = new Error('Only the original author can delete this comment!');
+        err.status = 403;
+        return next(err);
+      }
       if (req.body.rating) {
         dish.comments.id(req.params.commentId).rating = req.body.rating
       }
@@ -209,27 +214,41 @@ dishRouter.route('/:dishId/comments/:commentId')
   }, (err) => next(err))
   .catch((err) => next(err)); 
 })
+// You will allow the operation to be performed only if the user's ID matches 
+// the id of the comment's author. Note that the User's ID is available from the
+//  req.user property of the req object. Also ObjectIDs behave like Strings, and 
+//  hence when comparing two ObjectIDs, you should use the Id1.equals(id2) syntax.
 .delete(authenticate.verifyUser, (req, res, next) => {
   Dishes.findById(req.params.dishId)
   .then((dish) => {
     if (dish!=null && dish.comments.id(req.params.commentId) != null) {
-      dish.comments.id(req.params.commentId).remove();
-      dish.save()
-      .then((dish) => {
-        dishes.findById(dish._id)
-        .populate('comments.author')
+      console.log(`user id = ${req.user._id} comment author: ${dish.comments.id(req.params.commentId).author._id}`)
+      //if(req.user._id.equals(dish.comments.id(req.params.commentId).author._id)) {
+      if (dish.comments.id(req.params.commentId).author.toString() != req.user._id.toString()) {
+        err = new Error('Only the original author can delete this comment!');
+        err.status = 403;
+        return next(err);
+      }
+      else {
+        dish.comments.id(req.params.commentId).remove();
+        dish.save()
         .then((dish) => {
-          res.statusCode = 200;
-          res.setHeader('Content-Type', 'application/json');
-          res.json(dish);
-        })
-      }, (err) => next(err));
-    } else if (dish == null) {
-      new Error('Dish ' + req.params.dishId + ' not found.');
+          dishes.findById(dish._id)
+          .populate('comments.author')
+          .then((dish) => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(dish);
+          })
+        }, (err) => next(err));
+      }
+    }
+     else if (dish == null) {
+      var err = new Error('Dish ' + req.params.dishId + ' not found.');
       err.status = 404;
       return next(err);
     } else {
-      new Error('Comment ' + req.params.commentId + ' not found.');
+      var err = new Error('Comment ' + req.params.commentId + ' not found.');
       err.status = 404;
       return next(err);
     }

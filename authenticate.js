@@ -39,3 +39,27 @@ exports.jwtPassport = passport.use(new JwtStrategy(opts,
     }));
 
 exports.verifyUser = passport.authenticate('jwt', {session: false});
+
+// This function will check an ordinary user to see if s/he has Admin privileges.
+//In order to perform this check, note that all users have an additional field
+// stored in their records named admin, that is a boolean flag, set to false by 
+//default.Furthermore, when the user's token is checked in verifyUser() function,
+// it will load a new property named user to the request object.
+//This will be available to you if the verifyAdmin() follows verifyUser() in the
+// middleware order in Express. From this req object, you can obtain the admin 
+//flag of the user's information by using the following expression: req.user.admin
+//You can use this to decide if the user is an administrator. The verifyAdmin()
+// function will call next(); if the user is an Admin, otherwise it will return
+// next(err); If an ordinary user performs this operation, you should return 
+//an error by calling next(err) with the status of 403, and a message 
+//"You are not authorized to perform this operation!".
+exports.verifyAdmin = (req, res, next) => {
+    if (req.user.admin) {
+        next();
+    }
+    else {
+        var err = new Error('You are not an admin!');
+        err.status = 403;
+        next(err);
+    }
+};
