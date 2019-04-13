@@ -8,15 +8,15 @@ dishRouter.use(bodyParser.json());
 
 //ALL DISHES
 dishRouter.route('/')
-  //get request on dishes
-.get( (req,res,next) => {
+.get((req,res,next) => {
     Dishes.find({})
-      .then((dishes) => {
+    .populate('comments.author')
+    .then((dishes) => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
         res.json(dishes);
-      }, (err) => next(err))
-      .catch((err) => next(err));
+    }, (err) => next(err))
+    .catch((err) => next(err));
 })
   //posting a new dish to the server
 .post(authenticate.verifyUser, (req, res, next) => {
@@ -47,13 +47,14 @@ dishRouter.route('/')
 //dishID
 dishRouter.route('/:dishId')
 .get((req,res,next) => {
-  Dishes.findById(req.params.dishId)
-  .then((dish) => {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.json(dish);
-  }, (err) => next(err))
-  .catch((err) => next(err)); 
+    Dishes.findById(req.params.dishId)
+    .populate('comments.author')
+    .then((dish) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.json(dish);
+    }, (err) => next(err))
+    .catch((err) => next(err));
 })
 .post(authenticate.verifyUser, (req, res, next) => {
     res.statusCode = 403;
@@ -82,42 +83,44 @@ dishRouter.route('/:dishId')
 
 //ALL COMMENTS FOR A DISH
 dishRouter.route('/:dishId/comments')
-  //get request on dishes
-.get( (req,res,next) => {
+.get((req,res,next) => {
     Dishes.findById(req.params.dishId)
-      .then((dish) => {
-        if (dish!=null) {
-          res.statusCode = 200;
-          res.setHeader('Content-Type', 'application/json');
-          res.json(dish.comments);
-        } else {
-          new Error('Dish ' + req.params.dishId + ' not found.');
-          err.status = 404;
-          return next(err);
+    .populate('comments.author')
+    .then((dish) => {
+        if (dish != null) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(dish.comments);
         }
-      }, (err) => next(err))
-      .catch((err) => next(err));
+        else {
+            err = new Error('Dish ' + req.params.dishId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
+    }, (err) => next(err))
+    .catch((err) => next(err));
 })
-  //posting a new dish to the server
 .post(authenticate.verifyUser, (req, res, next) => {
     Dishes.findById(req.params.dishId)
     .then((dish) => {
-      if (dish!=null) {
-        dish.comments.push(req.body);
-        dish.save()
-        .then((dish) => {
-          res.statusCode = 200;
-          res.setHeader('Content-Type', 'application/json');
-          res.json(dish);
-        })
-      } else {
-        new Error('Dish ' + req.params.dishId + ' not found.');
-        err.status = 404;
-        return next(err);
-      }
+        if (dish != null) {
+            req.body.author = req.user._id;
+            dish.comments.push(req.body);
+            dish.save()
+            .then((dish) => {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.json(dish);                
+            }, (err) => next(err));
+        }
+        else {
+            err = new Error('Dish ' + req.params.dishId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
     }, (err) => next(err))
-    .catch((err) => next(err)); 
-})  
+    .catch((err) => next(err));
+}) 
   //doesn't make sense to put in this case, we're already posting with post
 .put(authenticate.verifyUser, (req, res, next) => {
     res.statusCode = 403;
@@ -148,24 +151,26 @@ dishRouter.route('/:dishId/comments')
 //commentID
 dishRouter.route('/:dishId/comments/:commentId')
 .get((req,res,next) => {
-  Dishes.findById(req.params.dishId)
-  .then((dish) => {
-    //dish exists and comments exist for the dish
-    if (dish != null && dish.comments.id(req.params.commentId) != null) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.json(dish.comments.id(req.params.commentId));
-    } else if (dish == null) {
-      new Error('Dish ' + req.params.dishId + ' not found.');
-      err.status = 404;
-      return next(err);
-    } else {
-      new Error('Comment ' + req.params.commentId + ' not found.');
-      err.status = 404;
-      return next(err);
-    }
-  }, (err) => next(err))
-  .catch((err) => next(err));
+    Dishes.findById(req.params.dishId)
+    .populate('comments.author')    
+    .then((dish) => {
+        if (dish != null && dish.comments.id(req.params.commentId) != null) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(dish.comments.id(req.params.commentId));
+        }
+        else if (dish == null) {
+            err = new Error('Dish ' + req.params.dishId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
+        else {
+            err = new Error('Comment ' + req.params.commentId + ' not found');
+            err.status = 404;
+            return next(err);            
+        }
+    }, (err) => next(err))
+    .catch((err) => next(err));
 })
 .post(authenticate.verifyUser, (req, res, next) => {
     res.statusCode = 403;
@@ -184,11 +189,14 @@ dishRouter.route('/:dishId/comments/:commentId')
       }
       dish.save()
       .then((dish) => {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.json(dish);
-      }, (err) => next(err))
-      .catch((err) => next(err)); 
+        dishes.findById(dish._id)
+        .populate('comments.author')
+        .then((dish) => {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.json(dish);
+        })
+      }, (err) => next(err));
     } else if (dish == null) {
       new Error('Dish ' + req.params.dishId + ' not found.');
       err.status = 404;
@@ -208,9 +216,13 @@ dishRouter.route('/:dishId/comments/:commentId')
       dish.comments.id(req.params.commentId).remove();
       dish.save()
       .then((dish) => {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.json(dish);
+        dishes.findById(dish._id)
+        .populate('comments.author')
+        .then((dish) => {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.json(dish);
+        })
       }, (err) => next(err));
     } else if (dish == null) {
       new Error('Dish ' + req.params.dishId + ' not found.');
