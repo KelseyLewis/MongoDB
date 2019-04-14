@@ -181,8 +181,8 @@ dishRouter.route('/:dishId/comments/:commentId')
   .then((dish) => {
     //dish exists and comments exist for the dish
     if (dish != null && dish.comments.id(req.params.commentId) != null) {
-      if (dish.comments.id(req.params.commentId).author.toString() != req.user._id.toString()) {
-        err = new Error('Only the original author can delete this comment!');
+      if (dish.comments.id(req.params.commentId).author._id.toString() != req.user._id.toString()) {
+        err = new Error('Only the original author can edit this comment!');
         err.status = 403;
         return next(err);
       }
@@ -194,7 +194,7 @@ dishRouter.route('/:dishId/comments/:commentId')
       }
       dish.save()
       .then((dish) => {
-        dishes.findById(dish._id)
+        Dishes.findById(dish._id)
         .populate('comments.author')
         .then((dish) => {
           res.statusCode = 200;
@@ -224,26 +224,24 @@ dishRouter.route('/:dishId/comments/:commentId')
     if (dish!=null && dish.comments.id(req.params.commentId) != null) {
       console.log(`user id = ${req.user._id} comment author: ${dish.comments.id(req.params.commentId).author._id}`)
       //if(req.user._id.equals(dish.comments.id(req.params.commentId).author._id)) {
-      if (dish.comments.id(req.params.commentId).author.toString() != req.user._id.toString()) {
+      if (dish.comments.id(req.params.commentId).author._id.toString() != req.user._id.toString()) {
         err = new Error('Only the original author can delete this comment!');
         err.status = 403;
         return next(err);
       }
-      else {
-        dish.comments.id(req.params.commentId).remove();
-        dish.save()
+      dish.comments.id(req.params.commentId).remove();
+      dish.save()
+      .then((dish) => {
+        Dishes.findById(dish._id)
+        .populate('comments.author')
         .then((dish) => {
-          dishes.findById(dish._id)
-          .populate('comments.author')
-          .then((dish) => {
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            res.json(dish);
-          })
-        }, (err) => next(err));
-      }
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.json(dish);
+        })
+      }, (err) => next(err));
     }
-     else if (dish == null) {
+    else if (dish == null) {
       var err = new Error('Dish ' + req.params.dishId + ' not found.');
       err.status = 404;
       return next(err);
