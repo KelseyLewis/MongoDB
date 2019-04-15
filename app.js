@@ -13,6 +13,7 @@ const config = require('./config');
 var indexRouter = require('./routes/index');
 var userRouter = require('./routes/userRouter');
 var dishRouter = require('./routes/dishRouter');
+var favoriteRouter = require('./routes/favoriteRouter');
 var promoRouter = require('./routes/promoRouter');
 var leaderRouter = require('./routes/leaderRouter');
 var uploadRouter = require('./routes/uploadRouter');
@@ -60,6 +61,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 //require authentication before accessing /dishes /promotions /leaders
 
 app.use('/dishes', dishRouter);
+app.use('/favorites', favoriteRouter);
 app.use('/promotions', promoRouter);
 app.use('/leaders', leaderRouter);
 app.use('/imageUpload', uploadRouter);

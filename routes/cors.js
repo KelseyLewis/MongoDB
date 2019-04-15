@@ -3,11 +3,11 @@ const cors = require('cors');
 const app = express();
 
 //array of strings that represent all of the origins the server is willing to accept
-const whitelist = ['http://localhost:3000', 'https://localhost:3443'];
+var whitelist = ['http://localhost:3000', 'https://localhost:3443', 'http://KelseysMacBookAir:3001', 'http://localhost:4200']
 
 var corsOptionsDelegate = (req, callback) => {
     var corsOptions;
-
+ 
     //see if the request header is part of the whitelist
     if (whitelist.indexOf(req.header('Origin')) !== -1) {
         //access control  = allow origin if origin = true
