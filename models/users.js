@@ -11,7 +11,7 @@ var User = new Schema({
       type: String,
         default: ''
     },
-    googleId: {
+    facebookId: {
       type: String
     },
     admin:   {

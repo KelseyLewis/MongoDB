@@ -1,34 +1,7 @@
 <html>
-<head>
-    <title>This is index.html</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-    <meta name="google-signin-client_id" content="313096840019-9616cheemjfl2chs943pdqrrns41iten.apps.googleusercontent.com">
-    <script src="https://apis.google.com/js/platform.js" async defer></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <style>
-      .data{
-        display: none;
-      }
-    </style>
-</head>
+<title>This is index.html</title>
 <body>
-    <h1>Index.html</h1>
-    <p>This is the contents of this file</p>
-    <div class="g-signin2" data-onsuccess="onSignIn"></div>
-    <div class="data">
-      <p> Profile Details </p>
-      <img id="pic" class="img-circle" width="100" height="100"/>
-      <p>Email Address</p>
-      <p id="email" class="alert alert-danger"></p>
-      <button onclick="signout()" class="btn btn-danger"> SignOut </button>
-    </div>
-
 <script>
-
-  function onSignIn(googleUser) {
-    var id_token = googleUser.getAuthResponse().id_token;
-  };
-
   // This is called with the results from from FB.getLoginStatus().
   function statusChangeCallback(response) {
     console.log('statusChangeCallback');
@@ -58,7 +31,7 @@
 
     window.fbAsyncInit = function() {
       FB.init({
-        appId      : 'YOUR CLIENT ID',
+        appId      : '449193639159561',
         xfbml      : true,
         version    : 'v2.10'
       });
@@ -102,8 +75,20 @@
   }
   </script>
 
+<h1>Index.html</h1>
+<p>This is the contents of this file</p>
 
+<!--
+  Below we include the Login Button social plugin. This button uses
+  the JavaScript SDK to present a graphical Login button that triggers
+  the FB.login() function when clicked.
+-->
 
+<fb:login-button scope="public_profile,email" onlogin="checkLoginState();">
+    </fb:login-button>
+    
+    <div id="status">
+    </div>
   </body>
   
 </html>

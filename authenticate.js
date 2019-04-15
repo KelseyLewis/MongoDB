@@ -5,7 +5,7 @@ var JwtStrategy = require('passport-jwt').Strategy;
 var ExtractJwt = require('passport-jwt').ExtractJwt;
 var jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
 var config = require('./config.js');
-var googleTokenStrategy = require('passport-google-oauth').OAuth2Strategy;
+var FacebookTokenStrategy = require('passport-facebook-token');
 
 exports.local = passport.use(new LocalStrategy(User.authenticate()));
 
@@ -65,52 +65,29 @@ exports.verifyAdmin = (req, res, next) => {
     }
 };
 
-exports.googlePassport = passport.use(new googleTokenStrategy({
-    clientID: config.google.clientId,
-    clientSecret: config.google.clientSecret,
-    //callbackURL: 
-    },
-    (accessToken, refreshToken, profile, done) => {
-        User.findOne({googleId: profile.id}, (err, user) => {
-            if (err) {
-                return done(err, false);
-            }
-            if (!err && user !== null) {
-                return done(null, user);
-            }
-            else { //if user doesn't exist, create a new user
-                user = new User({username: profile.displayName});
-                user.googleId = profile.id;
-                user.firstname = profile.name.given_name;
-                user.lastname = profile.name.family_name;
-                user.save((err, user) => {
-                    if (err) {
-                        return done(err, false);
-                    }
-                    else {
-                        return done(null, user);
-                    }
-                });
-            }
-        })     
-        // return done(null, {
-        //     profile: profile,
-        //     token: token
-        // });
-    })
-);
-
-
-// module.exports = (passport) => {
-//     passport.use(new GoogleStrategy({
-//             clientID: %your_client_ID%,
-//             clientSecret: %your_client_secret%,
-//             callbackURL: %your_callback_url%
-//         },
-//         (token, refreshToken, profile, done) => {
-//             return done(null, {
-//                 profile: profile,
-//                 token: token
-//             });
-//         }));
-// };
+exports.facebookPassport = passport.use(new FacebookTokenStrategy({
+    clientID: config.facebook.clientId,
+    clientSecret: config.facebook.clientSecret
+}, (accessToken, refreshToken, profile, done) => {
+    User.findOne({facebookId: profile.id}, (err, user) => {
+        if (err) {
+            return done(err, false);
+        }
+        if (!err && user !== null) {
+            return done(null, user);
+        }
+        else {
+            user = new User({ username: profile.displayName });
+            user.facebookId = profile.id;
+            user.firstname = profile.name.givenName;
+            user.lastname = profile.name.familyName;
+            user.save((err, user) => {
+                if (err)
+                    return done(err, false);
+                else
+                    return done(null, user);
+            })
+        }
+    });
+}
+));
