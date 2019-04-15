@@ -11,6 +11,9 @@ var User = new Schema({
       type: String,
         default: ''
     },
+    googleId: {
+      type: String
+    },
     admin:   {
         type: Boolean,
         default: false
