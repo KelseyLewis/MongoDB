@@ -9,6 +9,12 @@ var mongoose = require('mongoose');
 
 favoriteRouter.use(bodyParser.json());
 
+// dishIDs
+// 5cb4f09933a07e1a071f9f53
+// 5cb4f0a633a07e1a071f9f54
+// 5cb4f0b033a07e1a071f9f55
+// 5cb4f0b433a07e1a071f9f56
+
 favoriteRouter.route('/')
 .options(cors.corsWithOptions, (req, res) => {res.sendStatus(200); })
 .get(cors.cors, authenticate.verifyUser, (req,res,next) => {
@@ -21,7 +27,7 @@ favoriteRouter.route('/')
             res.setHeader('Content-Type', 'application/json');
             return res.json(`You have no favorites!`);
         }
-        else {
+        else { 
             Favorites.findById(favorite._id)
             .populate('user')
             .populate('dishes')
@@ -34,50 +40,45 @@ favoriteRouter.route('/')
     })
     .catch((err) => next(err))
 })
-//FINISH POSTING MULTIPLE
+.put(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
+    res.statusCode = 403;
+    res.end('PUT operation not supported on /dishes');
+})
 .post(cors.cors, authenticate.verifyUser, (req,res,next) => {
     //get the favorite document for this user
     Favorites.findOne({user: req.user._id})
     .then((favorite) => {
-        // if no favorites currently exist for this user, create a favorite documentand add this dish/es
-        console.log(`favorite = ${favorite}`);
+        // if no favorites currently exist for this user...
         if (!favorite) {
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            //create a new document
-            Favorites.create({user: req.user._id, dishes: []}, (err, doc) => {
+            //create a new document and add the dishes in the request body
+            Favorites.create({user: req.user._id, dishes: req.body}, (err, doc) => {
                 if (err) {
                     return  next(err);
                 }
                 else {
                     console.log("Document inserted");
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    return res.json(doc);
                 }
-            });
-            Favorites.findById(favorite._id)
-            .populate('user')
-            .populate('dishes')
-            .then((favorite) => {
-                res.statusCode = 200;
-                res.setHeader('Content-Type', 'application/json');
-                return res.json(favorite);
             })
-            .catch((err) => {
-                return next(err);
-            });
-
         }
-        //if dishes already exist in favorites (i.e. !null) then add dishes
-        else { 
-            favorite.dishes.push({ "_id": req.params.dishId });
+        else { //there is already a populated favorites document for this user
+            //add each dish to favorites that is not already in the favorites array
+            for (i = 0; i < req.body.length; i++ ) {
+                if (favorite.dishes.indexOf(req.body[i]._id) < 0) {                              
+                    favorite.dishes.push(req.body[i]);
+                }
+            }
             favorite.save()
             .then((favorite) => {
                 Favorites.findById(favorite._id)
-                .populate('user')
-                .populate('dishes')
+                //.populate('user')
+                //.populate('dishes')
                 .then((favorite) => {
                     res.statusCode = 200;
                     res.setHeader('Content-Type', 'application/json');
-                    return res.json(favorite);
+                    res.json(favorite);
                 })
             })
             .catch((err) => {
@@ -101,7 +102,6 @@ favoriteRouter.route('/')
 
 favoriteRouter.route('/:dishId')
 .options(cors.corsWithOptions, (req, res) => {res.sendStatus(200); })
-//ONLY RETURN ONE VALUE
 .get(cors.cors, authenticate.verifyUser, (req,res,next) => {
     //get the favorites for this user 
     Favorites.findOne({user: req.user._id})
@@ -136,37 +136,27 @@ favoriteRouter.route('/:dishId')
     })
     .catch((err) => next(err))
 })
+.put(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
+    res.statusCode = 403;
+    res.end('PUT operation not supported on /dishes');
+})
 .post(cors.cors, authenticate.verifyUser, (req,res,next) => {
-    //get the favorite document for this dishID
+    //get the favorite document for this user
     Favorites.findOne({user: req.user._id})
     .then((favorite) => {
-        // if no favorites currently exist for this user, create a favorite document
-        //and add this dish
-        console.log(`favorite = ${favorite}`);
         if (!favorite) {
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            //create a new document
+            //create a new document and add the dishes in the request body
             Favorites.create({user: req.user._id, dishes: [req.params.dishId]}, (err, doc) => {
                 if (err) {
                     return  next(err);
                 }
                 else {
                     console.log("Document inserted");
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    return res.json(doc);
                 }
-            });
-            Favorites.findById(favorite._id)
-            .populate('user')
-            .populate('dishes')
-            .then((favorite) => {
-                res.statusCode = 200;
-                res.setHeader('Content-Type', 'application/json');
-                return res.json(favorite);
             })
-            .catch((err) => {
-                return next(err);
-            });
-
         }
         //dish already exists in favorites, return the dish with a message
         else if (favorite.dishes.indexOf(req.params.dishId) > -1) { 
